@@ -3,6 +3,7 @@
 (defparameter *running* t)
 
 (defun run-vm ()
+  (disable-input-buffering)
   (progn
   ;(let ((args *posix-argv*))
   (let ((args (list 1)))

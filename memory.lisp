@@ -68,6 +68,7 @@
 (use-foreign-library libkeyboard)
 
 (defcfun ("check_key" check-key-c) :int)
+(defcfun ("disable_input_buffering") :void)
 
 (defun check-key ()
   (not (eq 0 (check-key-c)))
