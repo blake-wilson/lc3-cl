@@ -1,7 +1,5 @@
-(defparameter *memory* (make-array (expt 2 16)))
-
-;(defparameter *registers*
-;  '(:R0 :R1 :R2 :R3 :R4 :R5 :R6 :R7 :R_COND :R_PC))
+(defparameter *memory-max* (ash 1 16))
+(defparameter *memory* (make-array *memory-max* :element-type '(unsigned-byte 16)))
 
 (defconstant R0 0)
 (defconstant R1 1)
@@ -14,6 +12,34 @@
 (defconstant R_COND 8)
 (defconstant R_PC 9)
 
+(defconstant OP_BR 0)
+(defconstant OP_ADD 1)
+(defconstant OP_LD 2)
+(defconstant OP_ST 3)
+(defconstant OP_JSR 4)
+(defconstant OP_AND 5)
+(defconstant OP_LDR 6)
+(defconstant OP_STR 7)
+(defconstant OP_RTI 8)
+(defconstant OP_NOT 9)
+(defconstant OP_LDI 10)
+(defconstant OP_STI 11)
+(defconstant OP_JMP 12)
+(defconstant OP_RES 13)
+(defconstant OP_LEA 14)
+(defconstant OP_TRAP 15)
+
+
+(defconstant TRAP_GETC #x20)
+(defconstant TRAP_OUT #x21)
+(defconstant TRAP_PUTS #x22)
+(defconstant TRAP_IN #x23)
+(defconstant TRAP_PUTSP #x24)
+(defconstant TRAP_HALT #x25)
+
+
+(defconstant MR_KBSR #xFE00) ; keyboard status
+(defconstant MR_KBDR #xFE02) ; keyboard data
 
 (defparameter *reg* (make-array 10))
 
@@ -26,4 +52,39 @@
 (defconstant FL_POS (ash 1 0)) ; P
 (defconstant FL_ZRO (ash 1 1)) ; Z
 (defconstant FL_NEG (ash 1 2)) ; N
+
+
+(require 'asdf)
+(asdf:load-system :cffi)
+
+(use-package 'cffi)
+
+
+(define-foreign-library libkeyboard
+    ; TODO: this was compiled and added to shared lib search path.
+    ; figure out how to call it from a local path
+    (:unix "libkeyboard.so")
+)
+(use-foreign-library libkeyboard)
+
+(defcfun ("check_key" check-key-c) :int)
+
+(defun check-key ()
+  (not (eq 0 (check-key-c)))
+)
+
+(defun mem-write (address val)
+  (setf (aref *memory* address) val))
+
+(defun mem-read (address)
+  (if (eq address MR_KBSR)
+    (if (check-key)
+      (progn
+        (setf (aref *memory* MR_KBSR) (ash 1 15))
+        (setf (aref *memory* MR_KBDR) (read-char))
+      )
+      (setf (aref *memory* MR_KBSR) #x00)
+    )
+    (aref *memory* address)
+  ))
 
