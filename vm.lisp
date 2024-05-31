@@ -1,9 +1,10 @@
+(declaim (optimize (debug 3)))
 (load "memory.lisp")
 
 (defparameter *running* t)
 
 (defun run-vm ()
-  (disable-input-buffering)
+  ;(disable-input-buffering)
   (progn
   ;(let ((args *posix-argv*))
   (let ((args (list 1)))
@@ -12,10 +13,10 @@
     ;)
     (loop for arg in args 
           ; do (read-image arg))
-          do (read-image "2048.obj"))
+          do (read-image "test.obj"))
   )
   (format t "read image\n\n")
-  (format t "image is ~A" *memory*)
+  ;(format t "image is ~A" *memory*)
   ; since exactly one condition flag should be set at any given time, set the Z flag
   (setf (aref *reg* R_COND) FL_ZRO)
 
@@ -24,27 +25,31 @@
   (setf (aref *reg* R_PC) #x3000)
 
 
+  (step (format t "running program\n\n\n"))
   (loop while *running*
     do (let* (
              (instr (mem-read (aref *reg* R_PC)))
              (op (fetch-instruction instr))
           )
-         ;(format t "instr ~A op ~A PC ~A" instr op (aref *reg* R_PC))
-         (cond ((eq op OP_ADD) (add instr))
-               ((eq op OP_LD) (load-instr instr))
-               ((eq op OP_ST) (store instr))
-               ((eq op OP_JSR) (jump-register instr))
-               ((eq op OP_AND) (bitwise-and instr))
-               ((eq op OP_LDR) (load-register instr))
-               ((eq op OP_STR) (store-register instr))
-               ((eq op OP_RTI) ())
-               ((eq op OP_NOT) (not-instr instr))
-               ((eq op OP_LDI) (load-indirect instr))
-               ((eq op OP_STI) (store-indirect instr))
-               ((eq op OP_JMP) (jump instr))
-               ((eq op OP_RES) ())
-               ((eq op OP_LEA) (load-effective-address instr))
-               ((eq op OP_TRAP) (trap instr))
+         (format t "instr ~A op ~A PC ~A" instr op (aref *reg* R_PC))
+         (cond 
+               ((eq op OP_BR)  (trace :break  (branch instr)))
+               ((eq op OP_ADD)  (trace :break (add instr)))
+               ((eq op OP_LD)   (trace :break (load-instr instr)))
+               ((eq op OP_ST)   (trace :break (store instr)))
+               ((eq op OP_JSR)  (trace :break (jump-register instr)))
+               ((eq op OP_AND)  (trace :break (bitwise-and instr)))
+               ((eq op OP_LDR)  (trace :break (load-register instr)))
+               ((eq op OP_STR)  (trace :break (store-register instr)))
+               ((eq op OP_RTI)  (trace :break ()))
+               ((eq op OP_NOT)  (trace :break (not-instr instr)))
+               ((eq op OP_LDI)  (trace :break (load-indirect instr)))
+               ((eq op OP_STI)  (trace :break (store-indirect instr)))
+               ((eq op OP_JMP)  (trace :break (jump instr)))
+               ((eq op OP_RES)  (trace :break ()))
+               ((eq op OP_LEA)  (trace :break (load-effective-address instr)))
+               ((eq op OP_TRAP) (trace :break (trap instr)))
+               (t (format t "unrecognized instruction ~A" instr))
           )
           (incf (aref *reg* R_PC) 1)
        )
@@ -53,7 +58,7 @@
 )
 
 (defun fetch-instruction (instr)
-    (format t "instr is ~A" instr)
+    ;(format t "instr is ~A" instr)
     (ash instr -12))
 
 (defun sign-extend (x bitcount)
@@ -126,7 +131,7 @@
   (let ((pc-offset (sign-extend (logand instr #x1FF) 9))
         (cond-flag (logand (ash instr -9) #x07)))
 
-    (if (logand cond-flag (eq (aref *reg* R_COND 1)))
+    (if (eq (logand cond-flag (aref *reg* R_COND)) 1)
       (incf (aref *reg* R_PC) pc-offset)
     )
   ))
@@ -222,12 +227,15 @@
 
 (defun trap-get-c ()
   (let ((c (read-char)))
+    (setf (aref *reg* R0) c)
     (update-flags R0)
   )
 )
 
 (defun trap-out ()
   (write-char (aref *reg* R0))
+  (format t "writing ~A" (aref *reg* R0))
+  (finish-output)
 )
 
 (defun trap-in ()
@@ -235,6 +243,7 @@
     (format t "Enter a character: ")
     (let ((c (read-char)))
       (write-char c)
+      (finish-output)
       (setf (aref *reg* R0) c)
       (update-flags R0)
     )
@@ -248,6 +257,7 @@
         (incf c)
       )
     )
+    (finish-output)
   ))
 
 (defun trap-putsp ()
@@ -262,6 +272,7 @@
       )
       (incf c)
     )
+    (finish-output)
   ))
 
 

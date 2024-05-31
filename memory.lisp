@@ -1,3 +1,5 @@
+(declaim (optimize (debug 3)))
+
 (defparameter *memory-max* (ash 1 16))
 (defparameter *memory* (make-array *memory-max* :element-type '(unsigned-byte 16)))
 
