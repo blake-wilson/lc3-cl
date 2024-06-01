@@ -30,7 +30,7 @@ void restore_input_buffering() {
 void handle_interrupt(int signal) {
   restore_input_buffering();
   printf("\n");
-  exit(-2);
+  // exit(-2);
 }
 
 void disable_input_buffering() {
@@ -48,7 +48,5 @@ void put_c(char c) {
 
 char get_c() {
   char c = getchar();
-  putc(c, stdout);
-  fflush(stdout);
   return c;
 }

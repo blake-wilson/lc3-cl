@@ -86,11 +86,11 @@
 (eq (aref *memory* (+ 31 #xBA)) 333)
 
 ; 0111 000 ; 110; 111111
-(setf (aref *reg* 0) 200)
-(setf (aref *reg* 5) 10)
-(setf *instr* #b0111000110111111)
-(store-register *instr*)
-(eq (aref *memory* (+ 10 -1)) 200)
+; (setf (aref *reg* 0) 200)
+; (setf (aref *reg* 5) 10)
+; (setf *instr* #b0111000110111111)
+; (store-register *instr*)
+; (eq (aref *memory* (+ 10 -1)) 200)
 
 ; jump-register
 ; 0100 | 1 | 00000000110
@@ -121,6 +121,13 @@
 ; load-indirect 40969
 ; 1010 | dst-reg | pc-offset
 ; 1010 | 000 | 0000001001
-; reg: (0 67427368 0 0 0 12310 61473 13018 2 13075)
+                ; reg: (0 67427368 0 0 0 12310 61473 13018 2 13075)
+; reg: (0 3019682 0 0 0 12314 16380 12938 2 12995)
 (setf *instr* #b1010000000001001)
+(setf (aref *reg* R0) 0)
+(setf (aref *reg* R_PC) 12995)
+(setf (aref *memory* (+ 12995 9)) 65024)
+(setf (aref *memory* 65024) 200)
+(load-indirect *instr*)
 
+(eq (aref *reg* R0) 200)

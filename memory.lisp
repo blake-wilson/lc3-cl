@@ -97,6 +97,6 @@
       )
       (setf (aref *memory* MR_KBSR) #x00)
     )
-    (aref *memory* address)
-  ))
+  )
+  (aref *memory* address))
 

@@ -107,6 +107,7 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
        (progn
+         ; (format t "setting register ~A" r-r0)
          (setf (aref *reg* r-r0)
                (mem-read (mem-read (+ (aref *reg* R_PC) pc-offset))))
          (update-flags r-r0)
