@@ -61,20 +61,28 @@
 
 (use-package 'cffi)
 
+; (defcfun ("putc" c-put-c) :void (char :char))
 
 (define-foreign-library libkeyboard
     ; TODO: this was compiled and added to shared lib search path.
     ; figure out how to call it from a local path
+    (:darwin "libkeyboard.dylib")
     (:unix "libkeyboard.so")
 )
 (use-foreign-library libkeyboard)
 
 (defcfun ("check_key" check-key-c) :int)
 (defcfun ("disable_input_buffering") :void)
+(defcfun ("put_c") :void (char :char))
+(defcfun ("get_c") :char)
 
 (defun check-key ()
   (not (eq 0 (check-key-c)))
 )
+
+; (defun put-c (char)
+;   (c-put-c char )
+; )
 
 (defun mem-write (address val)
   (setf (aref *memory* address) val))

@@ -4,7 +4,7 @@
 (defparameter *running* t)
 
 (defun run-vm ()
-  ;(disable-input-buffering)
+  ; (disable-input-buffering)
   (progn
   ;(let ((args *posix-argv*))
   (let ((args (list 1)))
@@ -13,8 +13,11 @@
     ;)
     (loop for arg in args 
           ; do (read-image arg))
-          do (read-image "test.obj"))
+          ; do (read-image "test.obj"))
+          do (read-image "2048.obj"))
+          ; do (read-image "helloworld.obj"))
   )
+  (format t "~A" (subseq *memory* #x3000 #x3010))
   (format t "read image\n\n")
   ;(format t "image is ~A" *memory*)
   ; since exactly one condition flag should be set at any given time, set the Z flag
@@ -31,27 +34,27 @@
              (instr (mem-read (aref *reg* R_PC)))
              (op (fetch-instruction instr))
           )
-         (format t "instr ~A op ~A PC ~A" instr op (aref *reg* R_PC))
+         (incf (aref *reg* R_PC) 1)
+         ; (format t "instr ~A op ~A PC ~A" instr op (aref *reg* R_PC))
          (cond 
-               ((eq op OP_BR)  (trace :break  (branch instr)))
-               ((eq op OP_ADD)  (trace :break (add instr)))
-               ((eq op OP_LD)   (trace :break (load-instr instr)))
-               ((eq op OP_ST)   (trace :break (store instr)))
-               ((eq op OP_JSR)  (trace :break (jump-register instr)))
-               ((eq op OP_AND)  (trace :break (bitwise-and instr)))
-               ((eq op OP_LDR)  (trace :break (load-register instr)))
-               ((eq op OP_STR)  (trace :break (store-register instr)))
-               ((eq op OP_RTI)  (trace :break ()))
-               ((eq op OP_NOT)  (trace :break (not-instr instr)))
-               ((eq op OP_LDI)  (trace :break (load-indirect instr)))
-               ((eq op OP_STI)  (trace :break (store-indirect instr)))
-               ((eq op OP_JMP)  (trace :break (jump instr)))
-               ((eq op OP_RES)  (trace :break ()))
-               ((eq op OP_LEA)  (trace :break (load-effective-address instr)))
-               ((eq op OP_TRAP) (trace :break (trap instr)))
+               ((eq op OP_BR) (branch instr))
+               ((eq op OP_ADD) (add instr))
+               ((eq op OP_LD) (load-instr instr))
+               ((eq op OP_ST) (store instr))
+               ((eq op OP_JSR) (jump-register instr))
+               ((eq op OP_AND) (bitwise-and instr))
+               ((eq op OP_LDR) (load-register instr))
+               ((eq op OP_STR) (store-register instr))
+               ((eq op OP_RTI) ())
+               ((eq op OP_NOT) (not-instr instr))
+               ((eq op OP_LDI) (load-indirect instr))
+               ((eq op OP_STI) (store-indirect instr))
+               ((eq op OP_JMP) (jump instr))
+               ((eq op OP_RES) ())
+               ((eq op OP_LEA) (load-effective-address instr))
+               ((eq op OP_TRAP) (trap instr))
                (t (format t "unrecognized instruction ~A" instr))
           )
-          (incf (aref *reg* R_PC) 1)
        )
    )
   )
@@ -61,13 +64,19 @@
     ;(format t "instr is ~A" instr)
     (ash instr -12))
 
-(defun sign-extend (x bitcount)
-  (if (eq
-        (logand (ash x (* (- bitcount 1) -1)) #x01) 1
-      )
-      (logior x (ash #xFFFF bitcount))
-      x
-  ))
+; (defun sign-extend (x bitcount)
+;   (if (eq
+;         (logand (ash x (* (- bitcount 1) -1)) #x01) 1
+;       )
+;       (logior x (ash #xFFFF bitcount))
+;       x
+;   ))
+
+(defun sign-extend (uint bits)
+  "Sign extend to 16 bits"
+  (if (= (ldb (byte 1 (1- bits)) uint) 0)
+      uint
+      (1+ (logxor (ash #xFFFF (+ -16 bits)) (- uint)))))
 
 (defun update-flags (r)
   (cond
@@ -85,7 +94,7 @@
         (r-r1 (logand (ash instr -6) #x07))
         (imm (logand (ash instr -5) #x01))
        )
-    (if imm
+    (if (eq imm 1)
       (let ((imm5 (sign-extend (logand instr #x1F) 5)))
         (setf (aref *reg* r-r0) (+ (aref *reg* r-r1) imm5))
       )
@@ -96,7 +105,7 @@
 
 (defun load-indirect (instr)
   (let ((r-r0 (logand (ash instr -9) #x07))
-        (pc-offset (sign-extend (logand instr #x1FF) -9)))
+        (pc-offset (sign-extend (logand instr #x1FF) 9)))
        (progn
          (setf (aref *reg* r-r0)
                (mem-read (mem-read (+ (aref *reg* R_PC) pc-offset))))
@@ -131,9 +140,10 @@
   (let ((pc-offset (sign-extend (logand instr #x1FF) 9))
         (cond-flag (logand (ash instr -9) #x07)))
 
-    (if (eq (logand cond-flag (aref *reg* R_COND)) 1)
+    (if (not (eq (logand cond-flag (aref *reg* R_COND)) 0))
       (incf (aref *reg* R_PC) pc-offset)
     )
+    ; (format t "branch PC: ~A" (aref *reg* R_PC))
   ))
 
 (defun jump (instr)
@@ -181,6 +191,7 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
     (progn
+      (format t "r-r0 is ~A" r-r0)
       (setf (aref *reg* r-r0) (+ (aref *reg* R_PC) pc-offset))
       (update-flags r-r0)
     ))
@@ -190,12 +201,14 @@
 (defun store (instr)
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
+      (format t "Storing ~a" (aref *reg* r-r0))
       (mem-write (+ (aref *reg* R_PC) pc-offset) (aref *reg* r-r0))
   ))
 
 (defun store-indirect (instr)
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
+      (format t "storing at ~A" (+ (aref *reg* R_PC) pc-offset))
       (mem-write (mem-read (+ (aref *reg* R_PC) pc-offset)) (aref *reg* r-r0))
   ))
 
@@ -203,11 +216,14 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (r-r1 (logand (ash instr -6) #x07))
         (offset (sign-extend (logand instr #x3F) 6)))
+    (format t "Storing ~a" (aref *reg* r-r0))
     (mem-write (+ (aref *reg* r-r1) offset) (aref *reg* r-r0))
   ))
 
 (defun trap (instr)
+  (setf (aref *reg* R7) (aref *reg* R_PC))
   (let ((code (logand instr #xFF)))
+    (format t "executing trap instruction ~A" code)
     (cond ((eq code TRAP_GETC) (trap-get-c))
           ((eq code TRAP_OUT) (trap-out))
           ((eq code TRAP_PUTS) (trap-puts))
@@ -217,47 +233,57 @@
       )
   ))
 
-(defun trap-get-c ()
-  (let ((c (aref *reg* R0)))
-    (loop while (not (eq (aref *memory* c) #x00)) do
-        (format t (aref *memory* c))
-        (incf c)
-    )
-  ))
+; (defun trap-get-c ()
+;   (let ((c (aref *reg* R0)))
+;     (loop while (not (eq (aref *memory* c) #x00)) do
+;         (format t (aref *memory* c))
+;         (incf c)
+;     )
+;   ))
 
 (defun trap-get-c ()
-  (let ((c (read-char)))
-    (setf (aref *reg* R0) c)
+  ; (let ((c (read-char)))
+  (format t "Getting char~%")
+  (let ((c (get-c)))
+    (format t "Got char ~A" c)
+    (setf (aref *reg* R0) (the (unsigned-byte 16) c))
     (update-flags R0)
   )
 )
 
 (defun trap-out ()
+  (format t "TRAP OUT~%")
   (write-char (aref *reg* R0))
   (format t "writing ~A" (aref *reg* R0))
-  (finish-output)
+  ; (finish-output)
 )
 
 (defun trap-in ()
   (progn
     (format t "Enter a character: ")
-    (let ((c (read-char)))
-      (write-char c)
-      (finish-output)
-      (setf (aref *reg* R0) c)
+    (let ((c (get-c)))
+      ;(write-char c)
+      ;(finish-output)
+      (put-c (the (signed-byte 8) c))
+      (setf (aref *reg* R0) (the (unsigned-byte 16) c))
       (update-flags R0)
     )
   ))
 
 (defun trap-puts ()
   (let ((c (aref *reg* R0)))
-    (loop while (not (eq (aref *memory* c) #x00)) do
+    ; (format t "c is ~A" c)
+    ; (format t "mem is ~A" (aref *memory* c))
+    (loop while (not (eq (aref *memory* c) #x0000)) do
       (progn
-        (write-char (aref *memory* c))
+        ; (format t "writing ~a" (logand (aref *memory* c) #xff))
+        ;(write-char (code-char (logand (aref *memory* c) #xff)))
+        ; (c-put-c (the (signed-byte 8) (logand (aref *memory* c) #xff)))
+        (put-c (the (signed-byte 8) (logand (aref *memory* c) #xff)))
         (incf c)
       )
     )
-    (finish-output)
+    ; (finish-output)
   ))
 
 (defun trap-putsp ()
@@ -272,7 +298,7 @@
       )
       (incf c)
     )
-    (finish-output)
+    ;(finish-output)
   ))
 
 
@@ -290,7 +316,7 @@
     (format t "origin is ~A\n\n" origin)
     (loop while (> (decf read) 0) do
         (progn
-          (mem-write ptr (swap16 ptr))
+          (mem-write ptr (swap16 (aref *memory* ptr)))
           (incf ptr)
         )
     )
@@ -305,7 +331,7 @@
 
 (defun swap16 (value)
   (progn
-    (format t "Value is ~A\n" value)
+    ; (format t "Value is ~A\n" value)
   (logior (logand (ash value 8) #xFF00) (ash value -8))))
 
 
