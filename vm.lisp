@@ -4,7 +4,7 @@
 (defparameter *running* t)
 
 (defun run-vm ()
-  ; (disable-input-buffering)
+  (disable-input-buffering)
   (progn
   ;(let ((args *posix-argv*))
   (let ((args (list 1)))
@@ -132,7 +132,7 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (r-r1 (logand (ash instr -6) #x07)))
 
-        (setf (aref *reg* r-r0) (not (aref *reg* r-r1)))
+        (setf (aref *reg* r-r0) (lognot (aref *reg* r-r1)))
         (update-flags r-r0)
   ))
 

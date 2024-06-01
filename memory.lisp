@@ -92,7 +92,8 @@
     (if (check-key)
       (progn
         (setf (aref *memory* MR_KBSR) (ash 1 15))
-        (setf (aref *memory* MR_KBDR) (read-char))
+        ; (setf (aref *memory* MR_KBDR) (read-char))
+        (setf (aref *memory* MR_KBDR) (get-c))
       )
       (setf (aref *memory* MR_KBSR) #x00)
     )
