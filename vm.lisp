@@ -253,7 +253,8 @@
 
 (defun trap-out ()
   (format t "TRAP OUT~%")
-  (write-char (aref *reg* R0))
+  ;(write-char (aref *reg* R0))
+  (put-c (the (signed-byte 8) (aref *reg* R0)))
   (format t "writing ~A" (aref *reg* R0))
   ; (finish-output)
 )
@@ -291,9 +292,11 @@
     (loop while (not (eq (aref *memory* c) #x00)) do
       (let ((char1 (logand c #xff))
             (char2 (ash c -8)))
-            (write-char char1)
+            ;(write-char char1)
+            (put-c (the (signed-byte 8) char1))
             (if (not (eq 0 char2))
-              (write-char char2)
+              ;(write-char char2)
+              (put-c (the (signed-byte 8) char2))
             )
       )
       (incf c)
