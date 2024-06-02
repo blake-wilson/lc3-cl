@@ -18,9 +18,6 @@
           ; do (read-image "rogue.obj"))
           ; do (read-image "helloworld.obj"))
   )
-  (format t "~A" (subseq *memory* #x3000 #x3010))
-  (format t "read image\n\n")
-  ;(format t "image is ~A" *memory*)
   ; since exactly one condition flag should be set at any given time, set the Z flag
   (setf (aref *reg* R_COND) FL_ZRO)
 
@@ -28,15 +25,12 @@
   ; 0x3000 is the default
   (setf (aref *reg* R_PC) #x3000)
 
-
-  (step (format t "running program\n\n\n"))
   (loop while *running*
     do (let* (
              (instr (mem-read (aref *reg* R_PC)))
              (op (fetch-instruction instr))
           )
          (incf (aref *reg* R_PC) 1)
-         ; (format t "instr ~A op ~A PC ~A" instr op (aref *reg* R_PC))
          (cond 
                ((eq op OP_BR) (branch instr))
                ((eq op OP_ADD) (add instr))
@@ -56,24 +50,13 @@
                ((eq op OP_TRAP) (trap instr))
                (t (format t "unrecognized instruction ~A" instr))
           )
-         ; (format t "registers: ~A~%" *reg*)
-         ; (format t "mem ~A~%" (aref *memory* #x3163))
        )
    )
   )
 )
 
 (defun fetch-instruction (instr)
-    ;(format t "instr is ~A" instr)
     (ash instr -12))
-
-; (defun sign-extend (x bitcount)
-;   (if (eq
-;         (logand (ash x (* (- bitcount 1) -1)) #x01) 1
-;       )
-;       (logior x (ash #xFFFF bitcount))
-;       x
-;   ))
 
 (defun sign-extend (uint bits)
   "Sign extend to 16 bits"
@@ -102,10 +85,8 @@
         (setf (aref *reg* r-r0) (mod (+ (aref *reg* r-r1) imm5) (ash 1 16)))
       )
       (let ((r-r2 (logand instr #x07)))
-        ;(format t "Adding ~A,~A: ~A and ~A~%" r-r1 r-r2 (aref *reg* r-r1) (aref *reg* r-r2))
         (setf (aref *reg* r-r0) (mod (+ (aref *reg* r-r1) (aref *reg* r-r2)) (ash 1 16)))
       ))
-    ;(format t "add instr ~A: r~A is now ~A~%" instr r-r0 (aref *reg* r-r0))
     (update-flags r-r0)
     ))
 
@@ -113,7 +94,6 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
        (progn
-         ; (format t "setting register ~A" r-r0)
          (setf (aref *reg* r-r0)
                (mem-read (mem-read (+ (aref *reg* R_PC) pc-offset))))
          (update-flags r-r0)
@@ -141,7 +121,6 @@
         (r-r1 (logand (ash instr -6) #x07)))
 
         (setf (aref *reg* r-r0) (logxor #xFFFF (aref *reg* r-r1)))
-        ; (format t "Not:reg ~A is now ~A~%" r-r0 (aref *reg* r-r0))
         (update-flags r-r0)
   ))
 
@@ -152,7 +131,6 @@
     (if (not (eq (logand cond-flag (aref *reg* R_COND)) 0))
       (incf (aref *reg* R_PC) pc-offset)
     )
-    ; (format t "branch PC: ~A" (aref *reg* R_PC))
   ))
 
 (defun jump (instr)
@@ -200,7 +178,6 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
     (progn
-      ; (format t "r-r0 is ~A" r-r0)
       (setf (aref *reg* r-r0) (+ (aref *reg* R_PC) pc-offset))
       (update-flags r-r0)
     ))
@@ -210,7 +187,6 @@
 (defun store (instr)
   (let ((r-r0 (logand (ash instr -9) #x07))
         (pc-offset (sign-extend (logand instr #x1FF) 9)))
-      ; (format t "Storing ~a in register ~a~%pcoffset~A~%" (aref *reg* r-r0) r-r0 pc-offset)
       (mem-write (+ (aref *reg* R_PC) pc-offset) (aref *reg* r-r0))
   ))
 
@@ -224,14 +200,12 @@
   (let ((r-r0 (logand (ash instr -9) #x07))
         (r-r1 (logand (ash instr -6) #x07))
         (offset (sign-extend (logand instr #x3F) 6)))
-    ; (format t "Storing ~a" (aref *reg* r-r0))
     (mem-write (+ (aref *reg* r-r1) offset) (aref *reg* r-r0))
   ))
 
 (defun trap (instr)
   (setf (aref *reg* R7) (aref *reg* R_PC))
   (let ((code (logand instr #xFF)))
-    ; (format t "executing trap instruction ~A" code)
     (cond ((eq code TRAP_GETC) (trap-get-c))
           ((eq code TRAP_OUT) (trap-out))
           ((eq code TRAP_PUTS) (trap-puts))
@@ -241,38 +215,21 @@
       )
   ))
 
-; (defun trap-get-c ()
-;   (let ((c (aref *reg* R0)))
-;     (loop while (not (eq (aref *memory* c) #x00)) do
-;         (format t (aref *memory* c))
-;         (incf c)
-;     )
-;   ))
-
 (defun trap-get-c ()
-  ; (let ((c (read-char)))
-  ; (format t "Getting char~%")
   (let ((c (get-c)))
-    ; (format t "Got char ~A" c)
     (setf (aref *reg* R0) (the (unsigned-byte 16) c))
     (update-flags R0)
   )
 )
 
 (defun trap-out ()
-  ; (format t "TRAP OUT~%")
-  ;(write-char (aref *reg* R0))
   (put-c (the (signed-byte 8) (aref *reg* R0)))
-  ; (format t "writing ~A" (aref *reg* R0))
-  ; (finish-output)
 )
 
 (defun trap-in ()
   (progn
     (format t "Enter a character: ")
     (let ((c (get-c)))
-      ;(write-char c)
-      ;(finish-output)
       (put-c (the (signed-byte 8) c))
       (setf (aref *reg* R0) (the (unsigned-byte 16) c))
       (update-flags R0)
@@ -281,18 +238,12 @@
 
 (defun trap-puts ()
   (let ((c (aref *reg* R0)))
-    ; (format t "c is ~A" c)
-    ; (format t "mem is ~A" (aref *memory* c))
     (loop while (not (eq (aref *memory* c) #x0000)) do
       (progn
-        ; (format t "writing ~a" (logand (aref *memory* c) #xff))
-        ;(write-char (code-char (logand (aref *memory* c) #xff)))
-        ; (c-put-c (the (signed-byte 8) (logand (aref *memory* c) #xff)))
         (put-c (the (signed-byte 8) (logand (aref *memory* c) #xff)))
         (incf c)
       )
     )
-    ; (finish-output)
   ))
 
 (defun trap-putsp ()
@@ -300,16 +251,13 @@
     (loop while (not (eq (aref *memory* c) #x00)) do
       (let ((char1 (logand c #xff))
             (char2 (ash c -8)))
-            ;(write-char char1)
             (put-c (the (signed-byte 8) char1))
             (if (not (eq 0 char2))
-              ;(write-char char2)
               (put-c (the (signed-byte 8) char2))
             )
       )
       (incf c)
     )
-    ;(finish-output)
   ))
 
 
@@ -324,7 +272,6 @@
          (ptr origin)
          (read (read-sequence *memory* file :start origin :end max-read))
         )
-    (format t "origin is ~A\n\n" origin)
     (loop while (> (decf read) 0) do
         (progn
           (mem-write ptr (swap16 (aref *memory* ptr)))
@@ -342,7 +289,6 @@
 
 (defun swap16 (value)
   (progn
-    ; (format t "Value is ~A\n" value)
   (logior (logand (ash value 8) #xFF00) (ash value -8))))
 
 
