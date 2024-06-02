@@ -5,18 +5,17 @@
 
 (defun run-vm ()
   (disable-input-buffering)
-  (progn
-  ;(let ((args *posix-argv*))
-  (let ((args (list 1)))
-    ;(if (< (length args) 2)
-    ;  (exit 2)
-    ;)
-    (loop for arg in args 
-          ; do (read-image arg))
-          ; do (read-image "test.obj"))
-          do (read-image "2048.obj"))
-          ; do (read-image "rogue.obj"))
-          ; do (read-image "helloworld.obj"))
+  (let ((args *posix-argv*))
+    (loop for arg in args do
+          (format t "~A" arg)
+    )
+    (if (< (length args) 2)
+      (progn
+        (format t "No file provided. Provide the filename of an executable object file~%")
+        (exit)
+      )
+    )
+    (read-image (nth 1 args))
   )
   ; since exactly one condition flag should be set at any given time, set the Z flag
   (setf (aref *reg* R_COND) FL_ZRO)
@@ -52,7 +51,6 @@
           )
        )
    )
-  )
 )
 
 (defun fetch-instruction (instr)
