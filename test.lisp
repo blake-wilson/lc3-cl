@@ -5,9 +5,6 @@
 (read-image "test.obj")
 
 ; origin should be 0x3000
-
-; Remaining data is
-;0x2c14 0xea15 0xe07d 0a
 (eq (aref *memory* #x3000) #x2c14)
 (eq (aref *memory* #x3001) #xea15)
 
@@ -18,10 +15,8 @@
 (setf (aref *reg* 0) 100)
 (setf (aref *reg* 1) 200)
 
-
 (add *instr*)
 (aref *reg* 2)
-
 
 ; branch instr
 ; | 0000 | 0 0 1 | 000000001
@@ -139,9 +134,3 @@
 (setf (aref *reg* R1) #b1110010011001101)
 (not-instr *instr*)
 (eq (aref *reg* R0) #b0001101100110010)
-
-
-; rogue
-; memory at #x3163 is 44084.
-; problem due to adding this value twice. 
-
