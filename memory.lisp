@@ -43,7 +43,7 @@
 (defconstant MR_KBSR #xFE00) ; keyboard status
 (defconstant MR_KBDR #xFE02) ; keyboard data
 
-(defparameter *reg* (make-array 10))
+(defparameter *reg* (make-array 10 :element-type '(unsigned-byte 16)))
 
 (defparameter *op-codes*
   '(:OP_BR :OP_ADD :OP_LD :OP_ST :OP_JSR :OP_AND :OP_LDR
@@ -93,7 +93,8 @@
       (progn
         (setf (aref *memory* MR_KBSR) (ash 1 15))
         ; (setf (aref *memory* MR_KBDR) (read-char))
-        (setf (aref *memory* MR_KBDR) (get-c))
+        (setf (aref *memory* MR_KBDR) (the (unsigned-byte 16) (get-c)))
+        (format t "assigned kbdr to ~A" (aref *memory* MR_KBDR))
       )
       (setf (aref *memory* MR_KBSR) #x00)
     )

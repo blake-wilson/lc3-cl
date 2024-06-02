@@ -131,3 +131,17 @@
 (load-indirect *instr*)
 
 (eq (aref *reg* R0) 200)
+
+; not
+; instr|dst-reg | src-reg| 1 | 11111
+; 1001 | 000    | 001    | 1 | 11111
+(setf *instr* #b1001000001111111)
+(setf (aref *reg* R1) #b1110010011001101)
+(not-instr *instr*)
+(eq (aref *reg* R0) #b0001101100110010)
+
+
+; rogue
+; memory at #x3163 is 44084.
+; problem due to adding this value twice. 
+
