@@ -50,7 +50,6 @@
            :OP_STR :OP_RTI :OP_NOT :OP_LDI :OP_STI :OP_JMP :OP_RES :OP_LEA
            :OP_TRAP))
 
-
 (defconstant FL_POS (ash 1 0)) ; P
 (defconstant FL_ZRO (ash 1 1)) ; Z
 (defconstant FL_NEG (ash 1 2)) ; N
@@ -60,8 +59,6 @@
 (asdf:load-system :cffi)
 
 (use-package 'cffi)
-
-; (defcfun ("putc" c-put-c) :void (char :char))
 
 (define-foreign-library libkeyboard
     ; TODO: this was compiled and added to shared lib search path.
@@ -73,16 +70,15 @@
 
 (defcfun ("check_key" check-key-c) :int)
 (defcfun ("disable_input_buffering") :void)
+
+; c functions from stdio. Used instead of Common Lisp's
+; char writing functions
 (defcfun ("put_c") :void (char :char))
 (defcfun ("get_c") :char)
 
 (defun check-key ()
   (not (eq 0 (check-key-c)))
 )
-
-; (defun put-c (char)
-;   (c-put-c char )
-; )
 
 (defun mem-write (address val)
   (setf (aref *memory* address) val))
@@ -92,9 +88,7 @@
     (if (check-key)
       (progn
         (setf (aref *memory* MR_KBSR) (ash 1 15))
-        ; (setf (aref *memory* MR_KBDR) (read-char))
         (setf (aref *memory* MR_KBDR) (the (unsigned-byte 16) (get-c)))
-        (format t "assigned kbdr to ~A" (aref *memory* MR_KBDR))
       )
       (setf (aref *memory* MR_KBSR) #x00)
     )
