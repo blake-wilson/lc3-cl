@@ -79,18 +79,19 @@
   (not (eq 0 (check-key-c)))
 )
 
-(defun mem-write (address val)
-  (setf (aref *memory* address) val))
+(defun mem-write (memory address val)
+  (setf (aref memory address) val))
 
-(defun mem-read (address)
+(defun mem-read (memory address)
   (if (eq address MR_KBSR)
     (if (check-key)
       (progn
-        (setf (aref *memory* MR_KBSR) (ash 1 15))
-        (setf (aref *memory* MR_KBDR) (the (unsigned-byte 16) (get-c)))
+        (setf (aref memory MR_KBSR) (ash 1 15))
+        (setf (aref memory MR_KBDR) (the (unsigned-byte 16) (get-c)))
+        ; (format t "assigned kbdr to ~A~%" (aref memory MR_KBDR))
       )
-      (setf (aref *memory* MR_KBSR) #x00)
+      (setf (aref memory MR_KBSR) #x00)
     )
   )
-  (aref *memory* address))
+  (aref memory address))
 
