@@ -17,7 +17,9 @@
 
 (defun (setf register) (value registers register)
   (setf (aref registers register) value)
-  (update-flags registers value))
+  (if (not (eq register R_PC))
+        (update-flags registers value)
+  ))
 
 (defun make-registers ()
   (make-array 10 :element-type '(unsigned-byte 16)))
@@ -294,7 +296,7 @@
 ;  ))
 
 (defun trap (instr registers memory) (with-spec instr ((code 0 7))
-  (format t "trap instr is ~b~%" code)
+  ;(format t "trap instr is ~b~%" code)
   (cond ((eq code TRAP_GETC) (trap-get-c registers))
         ((eq code TRAP_OUT) (trap-out registers))
         ((eq code TRAP_PUTS) (trap-puts registers memory))
@@ -315,10 +317,9 @@
 ;       )
 ;   ))
 
-(defun trap-get-c (reg)
+(defun trap-get-c (registers)
   (let ((c (get-c)))
-    (setf (register reg R0) (the (unsigned-byte 16) c))
-    (update-flags R0)
+    (setf (register registers R0) (the (unsigned-byte 16) c))
   )
 )
 
@@ -326,18 +327,17 @@
   (put-c (the (signed-byte 8) (aref reg R0)))
 )
 
-(defun trap-in (reg)
+(defun trap-in (registers)
   (progn
     (format t "Enter a character: ")
     (let ((c (get-c)))
       (put-c (the (signed-byte 8) c))
-      (setf (register reg R0) (the (unsigned-byte 16) c))
-      (update-flags R0)
+      (setf (register registers R0) (the (unsigned-byte 16) c))
     )
   ))
 
 (defun trap-puts (reg memory)
-  (format t "trap puts~%")
+  ; (format t "trap puts~%")
   (let ((c (register reg R0)))
     (loop while (not (eq (aref memory c) #x0000)) do
       (progn
