@@ -234,6 +234,7 @@
 
 (defun trap-halt ()
   (format t "HALT")
+  (restore-input-buffering)
   (setf *running* nil))
 
 

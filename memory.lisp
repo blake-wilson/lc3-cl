@@ -45,6 +45,7 @@
 (load-foreign-library '(:default "libkeyboard"))
 (defcfun ("check_key" check-key-c) :int)
 (defcfun ("disable_input_buffering") :void)
+(defcfun ("restore_input_buffering") :void)
 
 ; c functions from stdio. Used instead of Common Lisp's
 ; char writing functions
