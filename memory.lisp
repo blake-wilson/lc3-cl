@@ -13,31 +13,12 @@
 (defconstant R_COND 8)
 (defconstant R_PC 9)
 
-(defconstant OP_BR 0)
-(defconstant OP_ADD 1)
-(defconstant OP_LD 2)
-(defconstant OP_ST 3)
-(defconstant OP_JSR 4)
-(defconstant OP_AND 5)
-(defconstant OP_LDR 6)
-(defconstant OP_STR 7)
-(defconstant OP_RTI 8)
-(defconstant OP_NOT 9)
-(defconstant OP_LDI 10)
-(defconstant OP_STI 11)
-(defconstant OP_JMP 12)
-(defconstant OP_RES 13)
-(defconstant OP_LEA 14)
-(defconstant OP_TRAP 15)
-
-
 (defconstant TRAP_GETC #x20)
 (defconstant TRAP_OUT #x21)
 (defconstant TRAP_PUTS #x22)
 (defconstant TRAP_IN #x23)
 (defconstant TRAP_PUTSP #x24)
 (defconstant TRAP_HALT #x25)
-
 
 (defconstant MR_KBSR #xFE00) ; keyboard status
 (defconstant MR_KBDR #xFE02) ; keyboard data
@@ -52,7 +33,6 @@
 (defconstant FL_POS (ash 1 0)) ; P
 (defconstant FL_ZRO (ash 1 1)) ; Z
 (defconstant FL_NEG (ash 1 2)) ; N
-
 
 (require 'asdf)
 (asdf:load-system :cffi)
@@ -89,4 +69,3 @@
     )
   )
   (aref memory address))
-
