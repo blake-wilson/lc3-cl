@@ -239,7 +239,7 @@
 ;        )
 ;   ))
 
-(defun load-register (instr registers memory) (with-spec instr ((dr 9 11) (br 6 8) (offset 0 6))
+(defun load-register (instr registers memory) (with-spec instr ((dr 9 11) (br 6 8) (offset 0 5))
   (setf (register registers dr) (mem-read memory (+ (aref registers br) offset)))))
 
 ; (defun load-register (instr reg)
