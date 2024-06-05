@@ -88,7 +88,6 @@
       (progn
         (setf (aref memory MR_KBSR) (ash 1 15))
         (setf (aref memory MR_KBDR) (the (unsigned-byte 16) (get-c)))
-        ; (format t "assigned kbdr to ~A~%" (aref memory MR_KBDR))
       )
       (setf (aref memory MR_KBSR) #x00)
     )

@@ -61,7 +61,6 @@
              (instr (mem-read memory (aref registers R_PC)))
              (op (fetch-instruction instr))
           )
-         ;(format t "instr is ~b~%" instr)
          (incf (register registers R_PC) 1)
          (cond 
                ((eq op OP_BR) (branch instr registers))
@@ -178,11 +177,8 @@
 ;   ))
 
 (defun branch (instr registers) (with-spec instr ((cond-flag 9 11) (pc-offset 0 8))
-  ;(format t "conf flag ~A cond reg ~A~%" cond-flag (register registers R_COND))
   (if (not (eq (logand cond-flag (register registers R_COND)) 0))
-      (progn 
-        ;(format t "setting register to ~A~%" (+ (aref registers R_PC) (sign-extend pc-offset 9))) 
-        (incf (aref registers R_PC) (sign-extend pc-offset 9)))
+        (incf (aref registers R_PC) (sign-extend pc-offset 9))
   )))
 
 ; (defun branch (instr reg)
@@ -296,7 +292,6 @@
 ;  ))
 
 (defun trap (instr registers memory) (with-spec instr ((code 0 7))
-  ;(format t "trap instr is ~b~%" code)
   (cond ((eq code TRAP_GETC) (trap-get-c registers))
         ((eq code TRAP_OUT) (trap-out registers))
         ((eq code TRAP_PUTS) (trap-puts registers memory))
@@ -337,7 +332,6 @@
   ))
 
 (defun trap-puts (reg memory)
-  ; (format t "trap puts~%")
   (let ((c (register reg R0)))
     (loop while (not (eq (aref memory c) #x0000)) do
       (progn
@@ -348,7 +342,6 @@
   ))
 
 (defun trap-putsp (memory)
-  (format t "trap put~%")
   (let ((c (aref memory R0)))
     (loop while (not (eq (aref memory c) #x00)) do
       (let ((char1 (logand c #xff))
