@@ -35,26 +35,26 @@
         (exit)
       )
     )
-    (read-image (nth 1 args) memory)
-    (run-vm memory registers)
+    (let ((origin (read-image (nth 1 args) memory)))
+      (run-vm memory registers origin)
+    )
   ))
 
 (defun run-image (image-path)
-  (let ((memory (make-memory))
-        (registers (make-registers)))
-    (read-image image-path memory)
-    (run-vm memory registers)
+  (let* ((memory (make-memory))
+        (registers (make-registers))
+        (origin (read-image image-path memory)))
+    (run-vm memory registers origin)
   ))
 
 
-(defun run-vm (memory registers)
+(defun run-vm (memory registers origin)
   (disable-input-buffering)
   ; since exactly one condition flag should be set at any given time, set the Z flag
   (setf (aref registers R_COND) FL_ZRO)
 
   ; set the PC to starting position
-  ; 0x3000 is the default
-  (setf (aref registers R_PC) #x3000)
+  (setf (aref registers R_PC) origin)
 
   (loop while *running*
     do (let* (
@@ -249,6 +249,7 @@
           (incf ptr)
         )
     )
+    origin
   ))
 
 (defun read-origin (file)
@@ -258,13 +259,11 @@
   )) 
 
 (defun swap16 (value)
-  (progn
-  (logior (logand (ash value 8) #xFF00) (ash value -8))))
+  (logior (logand (ash value 8) #xFF00) (ash value -8)))
 
 (defun read-image (image-path memory)
   "Reads file at the provided path into the provided memory"
-  (progn
     (setf image-stream (open image-path :direction :input :element-type '(unsigned-byte 16)))
-    (read-image-file image-stream memory)
-    (close image-stream))
-  )
+    (let ((origin (read-image-file image-stream memory)))
+      (close image-stream)
+      origin))
