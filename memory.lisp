@@ -59,14 +59,10 @@
 
 (use-package 'cffi)
 
-(define-foreign-library libkeyboard
-    ; TODO: this was compiled and added to shared lib search path.
-    ; figure out how to call it from a local path
-    (:darwin "libkeyboard.dylib")
-    (:unix "libkeyboard.so")
-)
-(use-foreign-library libkeyboard)
-
+(pushnew (truename ".") *foreign-library-directories*
+         :test #'equal)
+ 
+(load-foreign-library '(:default "libkeyboard"))
 (defcfun ("check_key" check-key-c) :int)
 (defcfun ("disable_input_buffering") :void)
 
