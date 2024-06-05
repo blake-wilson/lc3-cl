@@ -133,71 +133,22 @@
           (mem-read memory (mem-read memory (+ (register registers R_PC) (sign-extend pc-offset 9))))
     )))
 
-; (defun load-indirect (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (pc-offset (sign-extend (logand instr #x1FF) 9)))
-;        (progn
-;          (setf (aref reg r-r0)
-;                (mem-read (mem-read (+ (aref reg R_PC) pc-offset))))
-;          (update-flags r-r0)
-;        )
-;     )
-;   )
-
 (defun bitwise-and (instr registers) (with-spec instr ((dr 9 11) (sr1 6 8) (imm-flag 5 5) (imm 0 4) (sr2 0 2))
   (if (eq imm-flag 1)
     (setf (register registers dr) (logand (register registers sr1) (sign-extend imm 5)))
     (setf (register registers dr) (logand (register registers sr1) (register registers sr2)))
   )))
 
-; (defun bitwise-and (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;       (r-r1 (logand (ash instr -6) #x07))
-;       (imm-flag (logand (ash instr 5) #x01)))
-;       (if (eq imm-flag 1)
-;         (let ((imm5 (sign-extend (logand instr #x1F) 5)))
-;           (setf (aref reg r-r0) (logand (aref reg r-r1) imm5))
-;         )
-;         (let ((r-r2 (logand instr #x07)))
-;           (setf (aref reg r-r0) (logand (aref reg r-r1) r-r2))
-;         )
-;       )
-;       (update-flags r-r0)
-;     ))
-
 (defun not-instr (instr registers) (with-spec instr ((dr 9 11) (sr 6 8))
   (setf (register registers dr) (logxor #xFFFF (register registers sr)))))
-
-; (defun not-instr (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (r-r1 (logand (ash instr -6) #x07)))
-; 
-;         (setf (aref reg r-r0) (logxor #xFFFF (aref reg r-r1)))
-;         (update-flags r-r0)
-;   ))
 
 (defun branch (instr registers) (with-spec instr ((cond-flag 9 11) (pc-offset 0 8))
   (if (not (eq (logand cond-flag (register registers R_COND)) 0))
         (incf (aref registers R_PC) (sign-extend pc-offset 9))
   )))
 
-; (defun branch (instr reg)
-;   (let ((pc-offset (sign-extend (logand instr #x1FF) 9))
-;         (cond-flag (logand (ash instr -9) #x07)))
-; 
-;     (if (not (eq (logand cond-flag (aref reg R_COND)) 0))
-;       (incf (aref reg R_PC) pc-offset)
-;     )
-;   ))
-
 (defun jump (instr registers) (with-spec instr ((br 6 8))
     (setf (register registers R_PC) (register registers br))))
-
-; (defun jump (instr reg)
-;   (let ((r-r1 (logand (ash instr -6) #x07)))
-;     (setf (aref reg R_PC) (aref reg r-r1))
-;   ))
-
 
 (defun jump-register (instr registers) (with-spec instr ((long-flag 11 11) (pc-offset 0 10) (br 6 8))
   (setf (register registers R7) (register registers R_PC))
@@ -206,90 +157,28 @@
     (setf (register registers R_PC) (aref registers br))
   )))
 
-; (defun jump-register (instr reg)
-;   (let ((long-flag (logand (ash instr -11) 1)))
-;     (progn
-;       (setf (aref reg R7) (aref reg R_PC))
-;       (if (eq long-flag 1)
-;         (let ((long-pc-offset (sign-extend (logand instr #x7FF) 11)))
-;           (incf (aref reg R_PC) long-pc-offset)
-;         )
-;         (let ((r-r1 (logand (ash instr -6) #x07)))
-;           (setf (aref reg R_PC) (aref reg r-r1))
-;         )
-;       )
-;     ))
-;   )
-
 (defun load-instr (instr registers memory) (with-spec instr ((dr 9 11) (pc-offset 0 8))
   (setf (register registers dr) (mem-read memory
                                 (+ (aref registers R_PC) (sign-extend pc-offset 9))))
   ))
 
-; (defun load-instr (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;        (pc-offset (sign-extend (logand instr #x1FF) 9)))
-;        (progn
-;          (setf (aref reg r-r0) (mem-read (+ (aref reg R_PC) pc-offset)))
-;          (update-flags r-r0)
-;        )
-;   ))
-
 (defun load-register (instr registers memory) (with-spec instr ((dr 9 11) (br 6 8) (offset 0 5))
   (setf (register registers dr) (mem-read memory (+ (aref registers br) offset)))))
 
-; (defun load-register (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (r-r1 (logand (ash instr -6) #x07))
-;         (offset (sign-extend (logand instr #x3F) 6)))
-; 
-;         (progn
-;           (setf (aref reg r-r0) (mem-read (+ (aref reg r-r1) offset)))
-;           (update-flags r-r0)
-;         )
-;   ))
-
 (defun load-effective-address (instr registers) (with-spec instr ((dr 9 11) (pc-offset 0 8))
   (setf (register registers dr) (+ (aref registers R_PC) (sign-extend pc-offset 9)))))
-
-; (defun load-effective-address (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (pc-offset (sign-extend (logand instr #x1FF) 9)))
-;     (progn
-;       (setf (aref reg r-r0) (+ (aref reg R_PC) pc-offset))
-;       (update-flags r-r0)
-;     ))
-;   )
 
 (defun store (instr registers memory) (with-spec instr ((sr 9 11) (pc-offset 0 8))
   (mem-write memory
              (+ (register registers R_PC)
                 (sign-extend pc-offset 9)) (register registers sr))))
 
-; (defun store (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (pc-offset (sign-extend (logand instr #x1FF) 9)))
-;       (mem-write (+ (aref reg R_PC) pc-offset) (aref reg r-r0))
-;   ))
-
 (defun store-indirect (instr registers memory) (with-spec instr ((sr 9 11) (pc-offset 0 8))
   (mem-write memory (mem-read memory (+ (register registers R_PC) (sign-extend pc-offset 9))) (register registers sr))))
 
-; (defun store-indirect (instr reg)
-;   (let ((r-r0 (logand (ash instr -9) #x07))
-;         (pc-offset (sign-extend (logand instr #x1FF) 9)))
-;       (mem-write (mem-read (+ (aref reg R_PC) pc-offset)) (aref reg r-r0))
-;   ))
 
 (defun store-register (instr registers memory) (with-spec instr ((sr 9 11) (br 6 8) (offset 0 5))
   (mem-write memory (+ (register registers br) (sign-extend offset 6)) (register registers sr))))
-
-;(defun store-register (instr)
-;  (let ((r-r0 (logand (ash instr -9) #x07))
-;        (r-r1 (logand (ash instr -6) #x07))
-;        (offset (sign-extend (logand instr #x3F) 6)))
-;    (mem-write (+ (aref reg r-r1) offset) (aref reg r-r0))
-;  ))
 
 (defun trap (instr registers memory) (with-spec instr ((code 0 7))
   (cond ((eq code TRAP_GETC) (trap-get-c registers))
@@ -299,18 +188,6 @@
         ((eq code TRAP_PUTSP) (trap-putsp memory))
         ((eq code TRAP_HALT) (trap-halt))
     )))
-
-; (defun trap (instr reg)
-;   (setf (aref reg R7) (aref reg R_PC))
-;   (let ((code (logand instr #xFF)))
-;     (cond ((eq code TRAP_GETC) (trap-get-c))
-;           ((eq code TRAP_OUT) (trap-out))
-;           ((eq code TRAP_PUTS) (trap-puts))
-;           ((eq code TRAP_IN) (trap-in))
-;           ((eq code TRAP_PUTSP) (trap-putsp))
-;           ((eq code TRAP_HALT) (trap-halt))
-;       )
-;   ))
 
 (defun trap-get-c (registers)
   (let ((c (get-c)))
