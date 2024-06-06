@@ -7,10 +7,20 @@
   (make-array *memory-max* :element-type '(unsigned-byte 16)))
 
 (defun (setf memory) (value mem address)
-  (setf (aref mem address)))
+  (setf (aref mem address) value))
 
 (defun memory (memory address)
-  (aref (memory adddress)))
+  (aref memory address))
+
+(defun update-flags (registers to-update)
+  (cond
+    ((eq to-update 0)
+      (setf (aref registers R_COND) FL_ZRO))
+    ((eq (logand 1 (ash to-update -15)) 1)
+      (setf (aref registers R_COND) FL_NEG))
+    (t
+      (setf (aref registers R_COND) FL_POS))
+  ))
 
 (defun register (registers register)
   (aref registers register))
@@ -24,67 +34,6 @@
 (defun make-registers ()
   (make-array 10 :element-type '(unsigned-byte 16)))
 
-(defun main ()
-  (let ((args *posix-argv*)
-        (memory (make-memory))
-        (registers (make-registers))
-       )
-    (if (< (length args) 2)
-      (progn
-        (format t "No file provided. Provide the filename of an executable object file~%")
-        (exit)
-      )
-    )
-    (let ((origin (read-image (nth 1 args) memory)))
-      (run-vm memory registers origin)
-    )
-  ))
-
-(defun run-image (image-path)
-  (let* ((memory (make-memory))
-        (registers (make-registers))
-        (origin (read-image image-path memory)))
-    (run-vm memory registers origin)
-  ))
-
-
-(defun run-vm (memory registers origin)
-  (disable-input-buffering)
-  ; since exactly one condition flag should be set at any given time, set the Z flag
-  (setf (aref registers R_COND) FL_ZRO)
-
-  ; set the PC to starting position
-  (setf (aref registers R_PC) origin)
-
-  (loop while *running*
-    do (let* (
-             (instr (mem-read memory (aref registers R_PC)))
-             (op (fetch-instruction instr))
-          )
-         (incf (register registers R_PC) 1)
-         (case op 
-               (:OP_BR (branch instr registers))
-               (:OP_ADD (add instr registers))
-               (:OP_LD (load-instr instr registers memory))
-               (:OP_ST (store instr registers memory))
-               (:OP_JSR (jump-register instr registers))
-               (:OP_AND (bitwise-and instr registers))
-               (:OP_LDR (load-register instr registers memory))
-               (:OP_STR (store-register instr registers memory))
-               (:OP_RTI ())
-               (:OP_NOT (not-instr instr registers))
-               (:OP_LDI (load-indirect instr registers memory))
-               (:OP_STI (store-indirect instr registers memory))
-               (:OP_JMP (jump instr registers))
-               (:OP_RES ())
-               (:OP_LEA (load-effective-address instr registers))
-               (:OP_TRAP (trap instr registers memory))
-               (t (format t "unrecognized instruction ~A" instr))
-          )
-       )
-   )
-)
-
 (defun with-overflow (val)
   (ldb (byte 16 0) val))
 
@@ -95,17 +44,6 @@
   (if (= (ldb (byte 1 (1- bits)) x) 0)
       x
       (1+ (logxor (ash #xFFFF (+ -16 bits)) (- x)))))
-
-(defun update-flags (registers to-update)
-  (cond
-    ((eq to-update 0)
-      (setf (aref registers R_COND) FL_ZRO))
-    ((eq (logand 1 (ash to-update -15)) 1)
-      (setf (aref registers R_COND) FL_NEG))
-    (t
-      (setf (aref registers R_COND) FL_POS))
-  ))
-
 
 (defmacro with-spec (instr spec &body body)
   `(let ,(loop for (name start-bit stop-bit) in spec
@@ -180,15 +118,6 @@
 (defun store-register (instr registers memory) (with-spec instr ((sr 9 11) (br 6 8) (offset 0 5))
   (mem-write memory (+ (register registers br) (sign-extend offset 6)) (register registers sr))))
 
-(defun trap (instr registers memory) (with-spec instr ((code 0 7))
-  (cond ((eq code TRAP_GETC) (trap-get-c registers))
-        ((eq code TRAP_OUT) (trap-out registers))
-        ((eq code TRAP_PUTS) (trap-puts registers memory))
-        ((eq code TRAP_IN) (trap-in registers))
-        ((eq code TRAP_PUTSP) (trap-putsp memory))
-        ((eq code TRAP_HALT) (trap-halt))
-    )))
-
 (defun trap-get-c (registers)
   (let ((c (get-c)))
     (setf (register registers R0) (the (unsigned-byte 16) c))
@@ -236,6 +165,23 @@
   (restore-input-buffering)
   (setf *running* nil))
 
+(defun trap (instr registers memory) (with-spec instr ((code 0 7))
+  (cond ((eq code TRAP_GETC) (trap-get-c registers))
+        ((eq code TRAP_OUT) (trap-out registers))
+        ((eq code TRAP_PUTS) (trap-puts registers memory))
+        ((eq code TRAP_IN) (trap-in registers))
+        ((eq code TRAP_PUTSP) (trap-putsp memory))
+        ((eq code TRAP_HALT) (trap-halt))
+    )))
+
+(defun swap16 (value)
+  (logior (logand (ash value 8) #xFF00) (ash value -8)))
+
+(defun read-origin (file)
+  (let ((origin-bytes (make-array 1 :element-type '(unsigned-byte 16))))
+    (read-sequence origin-bytes file)
+    (swap16 (aref origin-bytes 0))
+  )) 
 
 (defun read-image-file (file memory)
   (let* ((origin (read-origin file))
@@ -252,18 +198,71 @@
     origin
   ))
 
-(defun read-origin (file)
-  (let ((origin-bytes (make-array 1 :element-type '(unsigned-byte 16))))
-    (read-sequence origin-bytes file)
-    (swap16 (aref origin-bytes 0))
-  )) 
-
-(defun swap16 (value)
-  (logior (logand (ash value 8) #xFF00) (ash value -8)))
-
 (defun read-image (image-path memory)
   "Reads file at the provided path into the provided memory"
-    (setf image-stream (open image-path :direction :input :element-type '(unsigned-byte 16)))
-    (let ((origin (read-image-file image-stream memory)))
-      (close image-stream)
-      origin))
+    (let ((image-stream))
+      (setf image-stream (open image-path :direction :input :element-type '(unsigned-byte 16)))
+      (let ((origin (read-image-file image-stream memory)))
+        (close image-stream)
+        origin)))
+
+(defun run-vm (memory registers origin)
+  (disable-input-buffering)
+  ; since exactly one condition flag should be set at any given time, set the Z flag
+  (setf (aref registers R_COND) FL_ZRO)
+
+  ; set the PC to starting position
+  (setf (aref registers R_PC) origin)
+
+  (loop while *running*
+    do (let* (
+             (instr (mem-read memory (aref registers R_PC)))
+             (op (fetch-instruction instr))
+          )
+         (incf (register registers R_PC) 1)
+         (case op 
+               (:OP_BR (branch instr registers))
+               (:OP_ADD (add instr registers))
+               (:OP_LD (load-instr instr registers memory))
+               (:OP_ST (store instr registers memory))
+               (:OP_JSR (jump-register instr registers))
+               (:OP_AND (bitwise-and instr registers))
+               (:OP_LDR (load-register instr registers memory))
+               (:OP_STR (store-register instr registers memory))
+               (:OP_RTI ())
+               (:OP_NOT (not-instr instr registers))
+               (:OP_LDI (load-indirect instr registers memory))
+               (:OP_STI (store-indirect instr registers memory))
+               (:OP_JMP (jump instr registers))
+               (:OP_RES ())
+               (:OP_LEA (load-effective-address instr registers))
+               (:OP_TRAP (trap instr registers memory))
+               (t (format t "unrecognized instruction ~A" instr))
+          )
+       )
+   )
+)
+
+(defun main ()
+  (let ((args *posix-argv*)
+        (memory (make-memory))
+        (registers (make-registers))
+       )
+    (if (< (length args) 2)
+      (progn
+        (format t "No file provided. Provide the filename of an executable object file~%")
+        (exit)
+      )
+    )
+    (let ((origin (read-image (nth 1 args) memory)))
+      (run-vm memory registers origin)
+    )
+  ))
+
+(defun run-image (image-path)
+  (let* ((memory (make-memory))
+        (registers (make-registers))
+        (origin (read-image image-path memory)))
+    (run-vm memory registers origin)
+  ))
+

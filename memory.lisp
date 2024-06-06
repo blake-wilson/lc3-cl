@@ -1,4 +1,6 @@
 (declaim (optimize (debug 3)))
+(load "lc3-vm.asd")
+(ql:quickload "lc3-vm")
 
 (defparameter *memory-max* (ash 1 16))
 
@@ -33,9 +35,6 @@
 (defconstant FL_POS (ash 1 0)) ; P
 (defconstant FL_ZRO (ash 1 1)) ; Z
 (defconstant FL_NEG (ash 1 2)) ; N
-
-(require 'asdf)
-(asdf:load-system :cffi)
 
 (use-package 'cffi)
 
