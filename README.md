@@ -20,7 +20,7 @@ To run the VM, load `vm.lisp` with your Lisp interpreter from this project's roo
 ~/src/github.com/blake-wilson/lc3-vm $sbcl --load "vm.lisp"
 ```
 
-And run any assembled LC3 program to run via
+And run any assembled LC3 program via
 ```
 * (run-image "bin/2048.obj")
 ```
